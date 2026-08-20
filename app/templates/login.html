@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Log in</h1>
-<form method="post" action="/ui/login">
-  <div><input type="email" name="email" placeholder="email" required></div>
-  <div><input type="password" name="password" placeholder="password" required></div>
-  <button type="submit">Log in</button>
-</form>
+<div class="auth">
+  <h1>Log in</h1>
+  <form method="post" action="/ui/login" class="stack">
+    <input type="email" name="email" placeholder="email" required>
+    <input type="password" name="password" placeholder="password" required>
+    <button type="submit">Enter</button>
+  </form>
+</div>
 {% endblock %}

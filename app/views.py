@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import tmdb
 from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
-from app.models import Follow, Item, Rating, User
+from app.friends import friend_ids
+from app.models import Friendship, Item, Rating, User
 from app.security import SESSION_COOKIE, hash_password, verify_password
 
 router = APIRouter()
@@ -39,8 +40,7 @@ def ui_register(
 ):
     if len(password) < 12:
         return templates.TemplateResponse(
-            request,
-            "register.html",
+            request, "register.html",
             {"user": None, "error": "Password must be at least 12 characters"},
             status_code=400,
         )
@@ -56,8 +56,7 @@ def ui_register(
     except IntegrityError:
         db.rollback()
         return templates.TemplateResponse(
-            request,
-            "register.html",
+            request, "register.html",
             {"user": None, "error": "Username or email already taken"},
             status_code=400,
         )
@@ -77,8 +76,7 @@ def ui_login(
     found = db.scalar(select(User).where(User.email == email.strip().lower()))
     if found is None or not verify_password(found.password_hash, password):
         return templates.TemplateResponse(
-            request,
-            "login.html",
+            request, "login.html",
             {"user": None, "error": "Invalid email or password"},
             status_code=401,
         )
@@ -97,31 +95,158 @@ def feed_page(
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
 
-    following = db.execute(
-        select(User.username)
-        .join(Follow, Follow.followee_id == User.id)
-        .where(Follow.follower_id == user.id)
-        .order_by(User.username)
-    ).all()
+    ids = friend_ids(db, user.id)
+    rows = []
+    if ids:
+        rows = db.execute(
+            select(
+                Rating.score, Rating.review, User.username,
+                Item.title, Item.year, Item.image_url,
+            )
+            .join(User, User.id == Rating.user_id)
+            .join(Item, Item.id == Rating.item_id)
+            .where(Rating.user_id.in_(ids))
+            .order_by(Rating.updated_at.desc())
+            .limit(50)
+        ).all()
 
-    rows = db.execute(
-        select(
-            Rating.score, Rating.review, User.username,
-            Item.title, Item.year, Item.image_url,
+    pending = db.scalar(
+        select(Friendship).where(
+            Friendship.addressee_id == user.id, Friendship.status == "pending"
         )
-        .join(User, User.id == Rating.user_id)
-        .join(Item, Item.id == Rating.item_id)
-        .join(Follow, Follow.followee_id == Rating.user_id)
-        .where(Follow.follower_id == user.id)
-        .order_by(Rating.updated_at.desc())
-        .limit(50)
-    ).all()
+    )
 
     return templates.TemplateResponse(
-        request,
-        "feed.html",
-        {"user": user, "feed": rows, "following": [r[0] for r in following]},
+        request, "feed.html",
+        {"user": user, "feed": rows, "has_requests": pending is not None},
     )
+
+
+@router.get("/friends", response_class=HTMLResponse)
+def friends_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    incoming = db.execute(
+        select(Friendship.id, User.username)
+        .join(User, User.id == Friendship.requester_id)
+        .where(Friendship.addressee_id == user.id, Friendship.status == "pending")
+    ).all()
+
+    outgoing = db.execute(
+        select(Friendship.id, User.username)
+        .join(User, User.id == Friendship.addressee_id)
+        .where(Friendship.requester_id == user.id, Friendship.status == "pending")
+    ).all()
+
+    ids = friend_ids(db, user.id)
+    friends = []
+    if ids:
+        friends = db.execute(
+            select(User.username).where(User.id.in_(ids)).order_by(User.username)
+        ).all()
+
+    return templates.TemplateResponse(
+        request, "friends.html",
+        {"user": user, "incoming": incoming, "outgoing": outgoing, "friends": friends},
+    )
+
+
+@router.post("/ui/friends/request")
+def ui_friend_request(
+    username: str = Form(...),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    target = db.scalar(select(User).where(User.username == username.strip()))
+    if target is None or target.id == user.id:
+        return RedirectResponse(url="/friends", status_code=303)
+
+    existing = db.scalar(
+        select(Friendship).where(
+            or_(
+                (Friendship.requester_id == user.id) & (Friendship.addressee_id == target.id),
+                (Friendship.requester_id == target.id) & (Friendship.addressee_id == user.id),
+            )
+        )
+    )
+    if existing is not None:
+        if existing.requester_id == target.id and existing.status == "pending":
+            existing.status = "accepted"
+            db.commit()
+        return RedirectResponse(url="/friends", status_code=303)
+
+    db.add(Friendship(requester_id=user.id, addressee_id=target.id, status="pending"))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+    return RedirectResponse(url="/friends", status_code=303)
+
+
+@router.post("/ui/friends/{friendship_id}/accept")
+def ui_accept(
+    friendship_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    friendship = db.scalar(
+        select(Friendship).where(
+            Friendship.id == friendship_id,
+            Friendship.addressee_id == user.id,
+            Friendship.status == "pending",
+        )
+    )
+    if friendship is not None:
+        friendship.status = "accepted"
+        db.commit()
+    return RedirectResponse(url="/friends", status_code=303)
+
+
+@router.post("/ui/friends/{friendship_id}/reject")
+def ui_reject(
+    friendship_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    friendship = db.scalar(
+        select(Friendship).where(
+            Friendship.id == friendship_id,
+            Friendship.addressee_id == user.id,
+            Friendship.status == "pending",
+        )
+    )
+    if friendship is not None:
+        db.delete(friendship)
+        db.commit()
+    return RedirectResponse(url="/friends", status_code=303)
+
+
+@router.post("/ui/friends/{username}/remove")
+def ui_unfriend(
+    username: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    target = db.scalar(select(User).where(User.username == username.strip()))
+    if target is not None:
+        friendship = db.scalar(
+            select(Friendship).where(
+                Friendship.status == "accepted",
+                or_(
+                    (Friendship.requester_id == user.id) & (Friendship.addressee_id == target.id),
+                    (Friendship.requester_id == target.id) & (Friendship.addressee_id == user.id),
+                ),
+            )
+        )
+        if friendship is not None:
+            db.delete(friendship)
+            db.commit()
+    return RedirectResponse(url="/friends", status_code=303)
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -202,9 +327,7 @@ def my_ratings_page(
         .order_by(Rating.updated_at.desc())
     ).all()
 
-    return templates.TemplateResponse(
-        request, "me.html", {"user": user, "ratings": rows}
-    )
+    return templates.TemplateResponse(request, "me.html", {"user": user, "ratings": rows})
 
 
 @router.post("/ratings/{rating_id}/delete")
@@ -222,24 +345,15 @@ def ui_delete_rating(
     return RedirectResponse(url="/me", status_code=303)
 
 
-@router.post("/ui/follow")
-def ui_follow(
-    username: str = Form(...),
-    user: User = Depends(require_user),
-    db: Session = Depends(get_db),
-):
-    target = db.scalar(select(User).where(User.username == username.strip()))
-    if target is not None and target.id != user.id:
-        db.add(Follow(follower_id=user.id, followee_id=target.id))
-        try:
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-    return RedirectResponse(url="/", status_code=303)
-
-
 @router.post("/ui/logout")
 def ui_logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE)
+    return response
+
+
+@router.get("/ui/logout")
+def ui_logout_get():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response

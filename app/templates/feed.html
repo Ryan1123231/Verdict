@@ -1,27 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Feed</h1>
+<h1>The Feed</h1>
 
-<form method="post" action="/ui/follow">
-  <input name="username" placeholder="follow a username" required>
-  <button type="submit">Follow</button>
-</form>
-
-{% if following %}
-  <p>Following: {{ following|join(", ") }}</p>
+{% if has_requests %}
+  <div class="err" style="background:rgba(201,162,39,.12);border-color:var(--gold);color:var(--gold)">
+    You have a pending friend request. <a href="/friends" style="color:var(--gold)">Review it</a>
+  </div>
 {% endif %}
 
 {% if not feed %}
-  <p>Nothing here yet. Follow someone to see their ratings.</p>
+  <div class="empty">Nothing yet. <a href="/friends" style="color:var(--blood-hi)">Add some friends</a> to see what they're watching.</div>
 {% endif %}
 
 {% for row in feed %}
   <div class="card">
     {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
-    <div>
-      <strong>{{ row.title }}</strong>{% if row.year %} ({{ row.year }}){% endif %}<br>
-      {{ row.username }} rated it {{ row.score }}/10<br>
-      {% if row.review %}<em>{{ row.review }}</em>{% endif %}
+    <div class="card-body">
+      <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
+      <div class="meta">{{ row.username }} &middot; <span class="score">{{ row.score }}</span><span class="year">/10</span></div>
+      {% if row.review %}<div class="review">{{ row.review }}</div>{% endif %}
     </div>
   </div>
 {% endfor %}

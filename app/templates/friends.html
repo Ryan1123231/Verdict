@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Friends</h1>
+
+<form method="post" action="/ui/friends/request" class="row">
+  <input name="username" placeholder="add someone by username" required>
+  <button type="submit">Send request</button>
+</form>
+
+{% if incoming %}
+<h2 style="font-family:'Bebas Neue';font-size:1.5rem;letter-spacing:.06em;margin-top:2.5rem">Incoming</h2>
+{% for r in incoming %}
+  <div class="card">
+    <div class="card-body">
+      <div class="title">{{ r.username }}</div>
+      <div class="row" style="margin-top:.6rem">
+        <form class="inline" method="post" action="/ui/friends/{{ r.id }}/accept">
+          <button type="submit">Accept</button>
+        </form>
+        <form class="inline" method="post" action="/ui/friends/{{ r.id }}/reject">
+          <button class="ghost" type="submit">Decline</button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+{% endif %}
+
+{% if outgoing %}
+<h2 style="font-family:'Bebas Neue';font-size:1.5rem;letter-spacing:.06em;margin-top:2.5rem">Sent</h2>
+{% for r in outgoing %}
+  <div class="card">
+    <div class="card-body">
+      <div class="title">{{ r.username }}</div>
+      <div class="meta">pending</div>
+    </div>
+  </div>
+{% endfor %}
+{% endif %}
+
+<h2 style="font-family:'Bebas Neue';font-size:1.5rem;letter-spacing:.06em;margin-top:2.5rem">Your crew</h2>
+{% if not friends %}
+  <div class="empty">No friends yet. Send a request above.</div>
+{% endif %}
+{% for f in friends %}
+  <div class="card">
+    <div class="card-body">
+      <div class="title">{{ f.username }}</div>
+      <form class="inline" method="post" action="/ui/friends/{{ f.username }}/remove" style="margin-top:.5rem">
+        <button class="ghost" type="submit">Remove</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

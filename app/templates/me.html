@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>My ratings</h1>
-{% if not ratings %}<p>You haven't rated anything yet.</p>{% endif %}
+<h1>My Verdicts</h1>
+{% if not ratings %}
+  <div class="empty">You haven't rated anything yet. <a href="/search" style="color:var(--blood-hi)">Find something</a>.</div>
+{% endif %}
 {% for row in ratings %}
   <div class="card">
     {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
-    <div>
-      <strong>{{ row.title }}</strong>{% if row.year %} ({{ row.year }}){% endif %}<br>
-      {{ row.score }}/10
-      {% if row.review %}<br><em>{{ row.review }}</em>{% endif %}
-      <form class="inline" method="post" action="/ratings/{{ row.rating_id }}/delete">
-        <button type="submit">Delete</button>
+    <div class="card-body">
+      <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
+      <div class="meta"><span class="score">{{ row.score }}</span><span class="year">/10</span></div>
+      {% if row.review %}<div class="review">{{ row.review }}</div>{% endif %}
+      <form class="inline" method="post" action="/ratings/{{ row.rating_id }}/delete" style="margin-top:.7rem">
+        <button class="ghost" type="submit">Delete</button>
       </form>
     </div>
   </div>
