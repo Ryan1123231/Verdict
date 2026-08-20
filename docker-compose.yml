@@ -25,6 +25,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://ratings:${POSTGRES_PASSWORD}@db:5432/ratings
       SECRET_KEY: ${SECRET_KEY}
+      TMDB_TOKEN: ${TMDB_TOKEN}
     depends_on:
       db:
         condition: service_healthy
