@@ -1,12 +1,13 @@
 from fastapi import Depends, FastAPI
 
-from app import auth, items
+from app import auth, items, ratings
 from app.auth import get_current_user
 from app.models import User
 
 app = FastAPI()
 app.include_router(auth.router)
 app.include_router(items.router)
+app.include_router(ratings.router)
 
 
 @app.get("/healthz")
