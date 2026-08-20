@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Feed</h1>
+
+<form method="post" action="/ui/follow">
+  <input name="username" placeholder="follow a username" required>
+  <button type="submit">Follow</button>
+</form>
+
+{% if following %}
+  <p>Following: {{ following|join(", ") }}</p>
+{% endif %}
+
+{% if not feed %}
+  <p>Nothing here yet. Follow someone to see their ratings.</p>
+{% endif %}
+
+{% for row in feed %}
+  <div class="card">
+    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
+    <div>
+      <strong>{{ row.title }}</strong>{% if row.year %} ({{ row.year }}){% endif %}<br>
+      {{ row.username }} rated it {{ row.score }}/10<br>
+      {% if row.review %}<em>{{ row.review }}</em>{% endif %}
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

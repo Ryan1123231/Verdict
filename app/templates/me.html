@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>My ratings</h1>
+{% if not ratings %}<p>You haven't rated anything yet.</p>{% endif %}
+{% for row in ratings %}
+  <div class="card">
+    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
+    <div>
+      <strong>{{ row.title }}</strong>{% if row.year %} ({{ row.year }}){% endif %}<br>
+      {{ row.score }}/10
+      {% if row.review %}<br><em>{{ row.review }}</em>{% endif %}
+      <form class="inline" method="post" action="/ratings/{{ row.rating_id }}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

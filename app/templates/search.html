@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Search</h1>
+<form method="get" action="/search">
+  <input name="q" value="{{ q or '' }}" placeholder="movie or show" required>
+  <button type="submit">Search</button>
+</form>
+
+{% for row in results %}
+  <div class="card">
+    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
+    <div>
+      <strong>{{ row.title }}</strong>{% if row.year %} ({{ row.year }}){% endif %}
+      <span>[{{ row.type }}]</span><br>
+      <form method="post" action="/rate">
+        <input type="hidden" name="media_type" value="{{ row.type }}">
+        <input type="hidden" name="source_id" value="{{ row.source_id }}">
+        <select name="score">
+          {% for n in range(1, 11) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+        </select>
+        <input name="review" placeholder="review (optional)" maxlength="2000">
+        <button type="submit">Rate</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

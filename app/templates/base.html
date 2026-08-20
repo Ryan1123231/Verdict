@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Ratings{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    nav { border-bottom: 1px solid #ccc; padding-bottom: .5rem; margin-bottom: 1.5rem; }
+    nav a { margin-right: 1rem; }
+    .card { border: 1px solid #ddd; padding: .75rem; margin-bottom: .75rem; display: flex; gap: .75rem; }
+    .card img { width: 60px; height: auto; }
+    .err { color: #b00; }
+    input, select, textarea { padding: .35rem; margin: .2rem 0; }
+    form.inline { display: inline; }
+  </style>
+</head>
+<body>
+<nav>
+  {% if user %}
+    <a href="/">Feed</a>
+    <a href="/search">Search</a>
+    <a href="/me">My ratings</a>
+    <span>{{ user.username }}</span>
+    <form class="inline" method="post" action="/ui/logout">
+      <button type="submit">Log out</button>
+    </form>
+  {% else %}
+    <a href="/login">Log in</a>
+    <a href="/register">Register</a>
+  {% endif %}
+</nav>
+{% if error %}<p class="err">{{ error }}</p>{% endif %}
+{% block content %}{% endblock %}
+</body>
+</html>

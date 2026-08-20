@@ -1,23 +1,15 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 
-from app import auth, follows, items, ratings
-from app.auth import get_current_user
-from app.models import User
+from app import auth, follows, items, ratings, views
 
 app = FastAPI()
 app.include_router(auth.router)
-app.include_router(items.router)
+app.include_router(items.router, prefix="/api")
 app.include_router(ratings.router)
 app.include_router(follows.router)
+app.include_router(views.router)
 
 
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
-
-
-@app.get("/")
-def index(user: User | None = Depends(get_current_user)):
-    if user is None:
-        return {"logged_in": False}
-    return {"logged_in": True, "username": user.username}
