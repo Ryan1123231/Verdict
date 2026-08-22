@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -101,7 +101,7 @@ def feed_page(
         rows = db.execute(
             select(
                 Rating.score, Rating.review, User.username,
-                Item.title, Item.year, Item.image_url,
+                Item.title, Item.year, Item.image_url, Item.type,
             )
             .join(User, User.id == Rating.user_id)
             .join(Item, Item.id == Rating.item_id)
@@ -311,23 +311,42 @@ def ui_rate(
 @router.get("/me", response_class=HTMLResponse)
 def my_ratings_page(
     request: Request,
+    type: str = "all",
     user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
 
-    rows = db.execute(
+    if type not in ("all", "movie", "tv", "game"):
+        type = "all"
+
+    counts_rows = db.execute(
+        select(Item.type, func.count(Rating.id))
+        .join(Item, Item.id == Rating.item_id)
+        .where(Rating.user_id == user.id)
+        .group_by(Item.type)
+    ).all()
+    counts = {t: c for t, c in counts_rows}
+    counts["all"] = sum(counts.values())
+
+    q = (
         select(
             Rating.id.label("rating_id"), Rating.score, Rating.review,
-            Item.title, Item.year, Item.image_url,
+            Item.title, Item.year, Item.image_url, Item.type,
         )
         .join(Item, Item.id == Rating.item_id)
         .where(Rating.user_id == user.id)
-        .order_by(Rating.updated_at.desc())
-    ).all()
+    )
+    if type != "all":
+        q = q.where(Item.type == type)
 
-    return templates.TemplateResponse(request, "me.html", {"user": user, "ratings": rows})
+    rows = db.execute(q.order_by(Rating.updated_at.desc())).all()
+
+    return templates.TemplateResponse(
+        request, "me.html",
+        {"user": user, "ratings": rows, "active": type, "counts": counts},
+    )
 
 
 @router.post("/ratings/{rating_id}/delete")
