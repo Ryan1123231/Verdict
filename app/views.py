@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
@@ -376,3 +376,63 @@ def ui_logout_get():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
+
+
+@router.get("/u/{username}", response_class=HTMLResponse)
+def profile_page(
+    request: Request,
+    username: str,
+    type: str = "all",
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if type not in ("all", "movie", "tv", "game"):
+        type = "all"
+
+    profile = db.scalar(select(User).where(User.username == username.strip()))
+    if profile is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    is_self = profile.id == user.id
+    is_friend = is_self or profile.id in friend_ids(db, user.id)
+
+    if not is_friend:
+        return templates.TemplateResponse(
+            request, "profile.html",
+            {"user": user, "profile": profile, "is_friend": False, "is_self": False},
+            status_code=403,
+        )
+
+    counts_rows = db.execute(
+        select(Item.type, func.count(Rating.id))
+        .join(Item, Item.id == Rating.item_id)
+        .where(Rating.user_id == profile.id)
+        .group_by(Item.type)
+    ).all()
+    counts = {t: c for t, c in counts_rows}
+    counts["all"] = sum(counts.values())
+
+    q = (
+        select(
+            Rating.score, Rating.review,
+            Item.title, Item.year, Item.image_url, Item.type,
+        )
+        .join(Item, Item.id == Rating.item_id)
+        .where(Rating.user_id == profile.id)
+    )
+    if type != "all":
+        q = q.where(Item.type == type)
+
+    rows = db.execute(q.order_by(Rating.updated_at.desc())).all()
+
+    return templates.TemplateResponse(
+        request, "profile.html",
+        {
+            "user": user, "profile": profile,
+            "is_friend": True, "is_self": is_self,
+            "ratings": rows, "active": type, "counts": counts,
+        },
+    )

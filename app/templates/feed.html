@@ -17,7 +17,7 @@
     {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
     <div class="card-body">
       <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
-      <div class="meta">{{ row.username }} &middot; <span class="score">{{ row.score }}</span><span class="year">/10</span></div>
+      <div class="meta"><a href="/u/{{ row.username }}" style="color:var(--muted)">{{ row.username }}</a> &middot; <span class="score">{{ row.score }}</span><span class="year">/10</span></div>
       {% if row.review %}<div class="review">{{ row.review }}</div>{% endif %}
     </div>
   </div>

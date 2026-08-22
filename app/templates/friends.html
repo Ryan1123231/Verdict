@@ -45,7 +45,7 @@
 {% for f in friends %}
   <div class="card">
     <div class="card-body">
-      <div class="title">{{ f.username }}</div>
+      <div class="title"><a href="/u/{{ f.username }}" style="color:var(--text);text-decoration:none">{{ f.username }}</a></div>
       <form class="inline" method="post" action="/ui/friends/{{ f.username }}/remove" style="margin-top:.5rem">
         <button class="ghost" type="submit">Remove</button>
       </form>

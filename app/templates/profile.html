@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ profile.username }}</h1>
+
+{% if not is_friend and not is_self %}
+  <div class="empty">
+    You're not friends with {{ profile.username }} yet.
+    <form method="post" action="/ui/friends/request" style="margin-top:1rem">
+      <input type="hidden" name="username" value="{{ profile.username }}">
+      <button type="submit">Send friend request</button>
+    </form>
+  </div>
+{% else %}
+
+<div class="tabs">
+  <a href="/u/{{ profile.username }}" class="tab {% if active == 'all' %}on{% endif %}">All <span>{{ counts.get('all', 0) }}</span></a>
+  <a href="/u/{{ profile.username }}?type=movie" class="tab {% if active == 'movie' %}on{% endif %}">Movies <span>{{ counts.get('movie', 0) }}</span></a>
+  <a href="/u/{{ profile.username }}?type=tv" class="tab {% if active == 'tv' %}on{% endif %}">Shows <span>{{ counts.get('tv', 0) }}</span></a>
+  <a href="/u/{{ profile.username }}?type=game" class="tab {% if active == 'game' %}on{% endif %}">Games <span>{{ counts.get('game', 0) }}</span></a>
+</div>
+
+{% if not ratings %}
+  <div class="empty">Nothing here yet.</div>
+{% endif %}
+
+{% for row in ratings %}
+  <div class="card">
+    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
+    <div class="card-body">
+      <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
+      <div class="meta">
+        <span class="score">{{ row.score }}</span><span class="year">/10</span>
+        {% if active == 'all' %}<span class="tag" style="margin-left:.5rem">{{ row.type }}</span>{% endif %}
+      </div>
+      {% if row.review %}<div class="review">{{ row.review }}</div>{% endif %}
+    </div>
+  </div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}
