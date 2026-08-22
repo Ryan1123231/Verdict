@@ -9,6 +9,15 @@
   <a href="/me?type=game" class="tab {% if active == 'game' %}on{% endif %}">Games <span>{{ counts.get('game', 0) }}</span></a>
 </div>
 
+<form method="get" action="/me" class="sortbar">
+  <input type="hidden" name="type" value="{{ active }}">
+  <select name="sort" onchange="this.form.submit()">
+    {% for key, opt in sorts.items() %}
+      <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ opt[0] }}</option>
+    {% endfor %}
+  </select>
+</form>
+
 {% if not ratings %}
   <div class="empty">
     {% if active == 'all' %}

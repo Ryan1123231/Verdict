@@ -15,6 +15,21 @@ from app.security import SESSION_COOKIE, hash_password, verify_password
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+SORTS = {
+    "recent": ("Recently rated", Rating.updated_at.desc()),
+    "oldest": ("Oldest first", Rating.updated_at.asc()),
+    "score_desc": ("Highest rated", Rating.score.desc(), Rating.updated_at.desc()),
+    "score_asc": ("Lowest rated", Rating.score.asc(), Rating.updated_at.desc()),
+    "title": ("Title A-Z", Item.title.asc()),
+    "year_desc": ("Newest release", Item.year.desc().nullslast()),
+    "year_asc": ("Oldest release", Item.year.asc().nullslast()),
+}
+
+
+def _order(sort: str):
+    return SORTS.get(sort, SORTS["recent"])[1:]
+
+
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, user: User | None = Depends(get_current_user)):
@@ -327,6 +342,7 @@ def ui_rate(
 def my_ratings_page(
     request: Request,
     type: str = "all",
+    sort: str = "recent",
     user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -335,6 +351,8 @@ def my_ratings_page(
 
     if type not in ("all", "movie", "tv", "game"):
         type = "all"
+    if sort not in SORTS:
+        sort = "recent"
 
     counts_rows = db.execute(
         select(Item.type, func.count(Rating.id))
@@ -356,11 +374,12 @@ def my_ratings_page(
     if type != "all":
         q = q.where(Item.type == type)
 
-    rows = db.execute(q.order_by(Rating.updated_at.desc())).all()
+    rows = db.execute(q.order_by(*_order(sort))).all()
 
     return templates.TemplateResponse(
         request, "me.html",
-        {"user": user, "ratings": rows, "active": type, "counts": counts},
+        {"user": user, "ratings": rows, "active": type,
+         "counts": counts, "sort": sort, "sorts": SORTS},
     )
 
 
@@ -398,6 +417,7 @@ def profile_page(
     request: Request,
     username: str,
     type: str = "all",
+    sort: str = "recent",
     user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -406,6 +426,8 @@ def profile_page(
 
     if type not in ("all", "movie", "tv", "game"):
         type = "all"
+    if sort not in SORTS:
+        sort = "recent"
 
     profile = db.scalar(select(User).where(User.username == username.strip()))
     if profile is None:
@@ -441,7 +463,7 @@ def profile_page(
     if type != "all":
         q = q.where(Item.type == type)
 
-    rows = db.execute(q.order_by(Rating.updated_at.desc())).all()
+    rows = db.execute(q.order_by(*_order(sort))).all()
 
     return templates.TemplateResponse(
         request, "profile.html",
@@ -449,5 +471,6 @@ def profile_page(
             "user": user, "profile": profile,
             "is_friend": True, "is_self": is_self,
             "ratings": rows, "active": type, "counts": counts,
+            "sort": sort, "sorts": SORTS,
         },
     )
