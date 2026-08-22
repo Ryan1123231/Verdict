@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% macro section(title, rows) %}
+<h2 style="font-family:'Bebas Neue';font-size:1.6rem;letter-spacing:.06em;margin:2.5rem 0 1rem">{{ title }}</h2>
+{% if not rows %}
+  <div class="empty">Couldn't load right now.</div>
+{% endif %}
+{% for row in rows %}
+  <div class="card">
+    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
+    <div class="card-body">
+      <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
+      {% set seen = ratings.get((row.source, row.source_id)) %}
+      {% if seen %}
+        <div class="meta">
+          {% for s in seen %}<span class="tag" style="margin-right:.3rem">{{ s.username }} {{ s.score }}/10</span>{% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" action="/rate" class="row" style="margin-top:.7rem">
+        <input type="hidden" name="media_type" value="{{ row.type }}">
+        <input type="hidden" name="source_id" value="{{ row.source_id }}">
+        <select name="score" style="width:auto;flex:0 0 auto">
+          {% for n in range(10, 0, -1) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+        </select>
+        <input name="review" placeholder="say something (optional)" maxlength="2000">
+        <button type="submit">Rate</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+{% endmacro %}
+
+{% block content %}
+<h1>Discover</h1>
+{{ section("Trending Films", data.movies) }}
+{{ section("Trending Shows", data.shows) }}
+{{ section("Top Games", data.games) }}
+{% endblock %}

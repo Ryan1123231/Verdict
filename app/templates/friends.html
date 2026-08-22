@@ -3,9 +3,53 @@
 <h1>Friends</h1>
 
 <form method="post" action="/ui/friends/request" class="row">
-  <input name="username" placeholder="add someone by username" required>
+  <input id="fq" name="username" placeholder="add someone by username" autocomplete="off" required>
   <button type="submit">Send request</button>
 </form>
+<div id="fsug" class="tabs" style="margin-top:.6rem"></div>
+
+<script>
+(function () {
+  var input = document.getElementById('fq');
+  var box = document.getElementById('fsug');
+  var timer = null;
+  var seq = 0;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function run() {
+    var term = input.value.trim();
+    if (term.length < 2) { box.innerHTML = ''; return; }
+    var mine = ++seq;
+
+    fetch('/api/users/search?q=' + encodeURIComponent(term), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (mine !== seq) return;
+        box.innerHTML = data.users.map(function (u) {
+          return '<button type="button" class="tab" data-u="' + esc(u) + '">' + esc(u) + '</button>';
+        }).join('');
+      })
+      .catch(function () {});
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 250);
+  });
+
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-u]');
+    if (!b) return;
+    input.value = b.getAttribute('data-u');
+    box.innerHTML = '';
+  });
+})();
+</script>
 
 {% if incoming %}
 <h2 style="font-family:'Bebas Neue';font-size:1.5rem;letter-spacing:.06em;margin-top:2.5rem">Incoming</h2>

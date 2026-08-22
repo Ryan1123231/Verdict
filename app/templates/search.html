@@ -1,33 +1,79 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Search</h1>
-<form method="get" action="/search" class="row">
-  <input name="q" value="{{ q or '' }}" placeholder="movie or show" required autofocus>
-  <button type="submit">Find</button>
-</form>
 
-{% if q and not results %}
-  <div class="empty" style="margin-top:1.5rem">No results for "{{ q }}"</div>
-{% endif %}
-
-<div style="margin-top:1.5rem">
-{% for row in results %}
-  <div class="card">
-    {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
-    <div class="card-body">
-      <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
-      <div class="meta"><span class="tag">{{ row.type }}</span></div>
-      <form method="post" action="/rate" class="row" style="margin-top:.7rem">
-        <input type="hidden" name="media_type" value="{{ row.type }}">
-        <input type="hidden" name="source_id" value="{{ row.source_id }}">
-        <select name="score" style="width:auto;flex:0 0 auto">
-          {% for n in range(10, 0, -1) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
-        </select>
-        <input name="review" placeholder="say something (optional)" maxlength="2000">
-        <button type="submit">Rate</button>
-      </form>
-    </div>
-  </div>
-{% endfor %}
+<div class="row">
+  <input id="q" value="{{ q or '' }}" placeholder="movie, show, or game" autocomplete="off" autofocus>
+  <span id="spin" class="year" style="display:none">…</span>
 </div>
+
+<div id="results" style="margin-top:1.5rem"></div>
+
+<script>
+(function () {
+  var input = document.getElementById('q');
+  var box = document.getElementById('results');
+  var spin = document.getElementById('spin');
+  var timer = null;
+  var seq = 0;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function card(row) {
+    var opts = '';
+    for (var n = 10; n >= 1; n--) opts += '<option value="' + n + '">' + n + '</option>';
+    return '' +
+      '<div class="card">' +
+        (row.image_url ? '<img src="' + esc(row.image_url) + '" alt="">' : '') +
+        '<div class="card-body">' +
+          '<div class="title">' + esc(row.title) +
+            ' <span class="year">' + (row.year ? esc(row.year) : '') + '</span></div>' +
+          '<div class="meta"><span class="tag">' + esc(row.type) + '</span></div>' +
+          '<form method="post" action="/rate" class="row" style="margin-top:.7rem">' +
+            '<input type="hidden" name="media_type" value="' + esc(row.type) + '">' +
+            '<input type="hidden" name="source_id" value="' + esc(row.source_id) + '">' +
+            '<select name="score" style="width:auto;flex:0 0 auto">' + opts + '</select>' +
+            '<input name="review" placeholder="say something (optional)" maxlength="2000">' +
+            '<button type="submit">Rate</button>' +
+          '</form>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function run() {
+    var term = input.value.trim();
+    if (term.length < 2) { box.innerHTML = ''; spin.style.display = 'none'; return; }
+
+    var mine = ++seq;
+    spin.style.display = '';
+
+    fetch('/api/suggest?q=' + encodeURIComponent(term), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (mine !== seq) return;
+        spin.style.display = 'none';
+        if (!data.results.length) {
+          box.innerHTML = '<div class="empty">No results for "' + esc(term) + '"</div>';
+          return;
+        }
+        box.innerHTML = data.results.map(card).join('');
+      })
+      .catch(function () {
+        if (mine !== seq) return;
+        spin.style.display = 'none';
+      });
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 250);
+  });
+
+  if (input.value.trim().length >= 2) run();
+})();
+</script>
 {% endblock %}

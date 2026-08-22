@@ -119,3 +119,27 @@ def fetch_one(source_id: str) -> dict | None:
     if not rows:
         return None
     return _normalize(rows[0])
+
+
+def popular(limit: int = 6) -> list[dict]:
+    cutoff = int(time.time()) - (400 * 24 * 3600)
+    body = (
+        "fields name,first_release_date,cover.url,total_rating,total_rating_count; "
+        f"where first_release_date > {cutoff} "
+        "& total_rating_count > 20 "
+        "& version_parent = null; "
+        "sort total_rating desc; "
+        f"limit {limit};"
+    )
+
+    with httpx.Client(timeout=8.0) as client:
+        resp = client.post(f"{BASE_URL}/games", headers=_headers(), content=body)
+        resp.raise_for_status()
+        rows = resp.json()
+
+    out = []
+    for row in rows:
+        item = _normalize(row)
+        if item is not None:
+            out.append(item)
+    return out

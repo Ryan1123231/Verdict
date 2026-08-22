@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import igdb, tmdb
+from app import discover, igdb, tmdb
 from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
 from app.friends import friend_ids
@@ -35,14 +35,14 @@ def _order(sort: str):
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, user: User | None = Depends(get_current_user)):
     if user is not None:
-        return RedirectResponse(url="/", status_code=303)
+        return RedirectResponse(url="/feed", status_code=303)
     return templates.TemplateResponse(request, "login.html", {"user": None})
 
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, user: User | None = Depends(get_current_user)):
     if user is not None:
-        return RedirectResponse(url="/", status_code=303)
+        return RedirectResponse(url="/feed", status_code=303)
     return templates.TemplateResponse(request, "register.html", {"user": None})
 
 
@@ -104,7 +104,7 @@ def ui_login(
     return response
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/feed", response_class=HTMLResponse)
 def feed_page(
     request: Request,
     user: User | None = Depends(get_current_user),
@@ -476,4 +476,56 @@ def profile_page(
             "ratings": rows, "active": type, "counts": counts,
             "sort": sort, "sorts": SORTS,
         },
+    )
+
+
+@router.get("/api/suggest")
+def suggest(
+    q: str = "",
+    user: User = Depends(require_user),
+):
+    term = q.strip()[:100]
+    if len(term) < 2:
+        return {"results": []}
+
+    results = []
+    try:
+        results.extend(tmdb.search(term, limit=6))
+    except Exception:
+        pass
+    try:
+        results.extend(igdb.search(term, limit=6))
+    except Exception:
+        pass
+    return {"results": results}
+
+
+@router.get("/", response_class=HTMLResponse)
+def discover_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    data = discover.get()
+
+    ids = friend_ids(db, user.id) + [user.id]
+    ratings_by_key = {}
+    if ids:
+        rows = db.execute(
+            select(Item.source, Item.source_id, Rating.score, User.username)
+            .join(Rating, Rating.item_id == Item.id)
+            .join(User, User.id == Rating.user_id)
+            .where(Rating.user_id.in_(ids))
+        ).all()
+        for r in rows:
+            ratings_by_key.setdefault((r.source, r.source_id), []).append(
+                {"username": r.username, "score": r.score}
+            )
+
+    return templates.TemplateResponse(
+        request, "discover.html",
+        {"user": user, "data": data, "ratings": ratings_by_key},
     )

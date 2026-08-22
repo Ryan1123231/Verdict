@@ -137,3 +137,22 @@ def unfriend(
     db.delete(friendship)
     db.commit()
     return {"unfriended": target.username}
+
+
+@router.get("/api/users/search")
+def search_users(
+    q: str = "",
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    term = q.strip()
+    if len(term) < 2:
+        return {"users": []}
+
+    rows = db.scalars(
+        select(User.username)
+        .where(User.username.ilike(f"{term}%"), User.id != user.id)
+        .order_by(User.username)
+        .limit(8)
+    ).all()
+    return {"users": list(rows)}

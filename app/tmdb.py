@@ -91,3 +91,37 @@ def fetch_one(media_type: str, source_id: str) -> dict | None:
         "year": _year(date),
         "image_url": _poster_url(row.get("poster_path")),
     }
+
+
+def trending(media_type: str, limit: int = 6) -> list[dict]:
+    if media_type not in ("movie", "tv"):
+        return []
+
+    with httpx.Client(timeout=6.0) as client:
+        resp = client.get(
+            f"{BASE_URL}/trending/{media_type}/week",
+            headers=_headers,
+            params={"language": "en-US"},
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+
+    results = []
+    for row in payload.get("results", []):
+        title = row.get("title") if media_type == "movie" else row.get("name")
+        date = row.get("release_date") if media_type == "movie" else row.get("first_air_date")
+        if not title:
+            continue
+        results.append(
+            {
+                "source": "tmdb",
+                "source_id": str(row["id"]),
+                "type": media_type,
+                "title": title,
+                "year": _year(date),
+                "image_url": _poster_url(row.get("poster_path")),
+            }
+        )
+        if len(results) >= limit:
+            break
+    return results
