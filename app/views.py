@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import tmdb
+from app import igdb, tmdb
 from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
 from app.friends import friend_ids
@@ -258,7 +258,17 @@ def search_page(
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
 
-    results = tmdb.search(q[:100]) if q.strip() else []
+    results = []
+    if q.strip():
+        term = q[:100]
+        try:
+            results.extend(tmdb.search(term))
+        except Exception:
+            pass
+        try:
+            results.extend(igdb.search(term))
+        except Exception:
+            pass
     return templates.TemplateResponse(
         request, "search.html", {"user": user, "q": q, "results": results}
     )
@@ -278,11 +288,16 @@ def ui_rate(
 
     review = (review or "").strip()[:2000] or None
 
+    source = "igdb" if media_type == "game" else "tmdb"
+
     item = db.scalar(
-        select(Item).where(Item.source == "tmdb", Item.source_id == source_id)
+        select(Item).where(Item.source == source, Item.source_id == source_id)
     )
     if item is None:
-        data = tmdb.fetch_one(media_type, source_id)
+        if source == "igdb":
+            data = igdb.fetch_one(source_id)
+        else:
+            data = tmdb.fetch_one(media_type, source_id)
         if data is None:
             return RedirectResponse(url="/search", status_code=303)
         item = Item(**data)
@@ -292,7 +307,7 @@ def ui_rate(
         except IntegrityError:
             db.rollback()
             item = db.scalar(
-                select(Item).where(Item.source == "tmdb", Item.source_id == source_id)
+                select(Item).where(Item.source == source, Item.source_id == source_id)
             )
 
     existing = db.scalar(
