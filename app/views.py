@@ -14,6 +14,7 @@ from app.db import get_db
 from app.friends import friend_ids
 from app.limiter import limiter
 from app.models import Friendship, Item, Rating, User
+from app.limiter import limiter
 from app.security import SESSION_COOKIE, hash_password, verify_password
 
 router = APIRouter()
@@ -440,7 +441,7 @@ def profile_page(
         raise HTTPException(status_code=404, detail="User not found")
 
     is_self = profile.id == user.id
-    is_friend = is_self or profile.id in friend_ids(db, user.id)
+    is_friend = is_self or profile.profile_public or profile.id in friend_ids(db, user.id)
 
     if not is_friend:
         return templates.TemplateResponse(
@@ -668,3 +669,72 @@ def ui_settings_username(
         )
 
     return RedirectResponse(url="/settings", status_code=303)
+
+
+@router.post("/ui/settings/password")
+@limiter.limit("6/hour")
+def ui_change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    ok, left = _can_rename(user)
+    ctx = {"user": user, "can_rename": ok, "days_left": left}
+
+    if not verify_password(user.password_hash, current_password):
+        ctx["error"] = "Current password is incorrect."
+        return templates.TemplateResponse(request, "settings.html", ctx, status_code=401)
+
+    if len(new_password) < 12:
+        ctx["error"] = "New password must be at least 12 characters."
+        return templates.TemplateResponse(request, "settings.html", ctx, status_code=400)
+
+    user.password_hash = hash_password(new_password)
+    db.commit()
+
+    response = RedirectResponse(url="/settings", status_code=303)
+    _set_session(response, user.id)
+    return response
+
+
+@router.post("/ui/settings/privacy")
+def ui_change_privacy(
+    public: str = Form(""),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    user.profile_public = public == "on"
+    db.commit()
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@router.post("/ui/settings/delete")
+@limiter.limit("3/hour")
+def ui_delete_account(
+    request: Request,
+    confirm_password: str = Form(...),
+    confirm_text: str = Form(""),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    ok, left = _can_rename(user)
+    ctx = {"user": user, "can_rename": ok, "days_left": left}
+
+    if not verify_password(user.password_hash, confirm_password):
+        ctx["error"] = "Password is incorrect."
+        return templates.TemplateResponse(request, "settings.html", ctx, status_code=401)
+
+    if confirm_text.strip() != "DELETE":
+        ctx["error"] = 'Type DELETE exactly to confirm.'
+        return templates.TemplateResponse(request, "settings.html", ctx, status_code=400)
+
+    media.delete_image(user.avatar)
+    media.delete_image(user.backdrop)
+    db.delete(user)
+    db.commit()
+
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE)
+    return response

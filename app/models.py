@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -25,6 +26,7 @@ class User(Base):
     bio: Mapped[str | None] = mapped_column(String(280), nullable=True)
     avatar: Mapped[str | None] = mapped_column(String(64), nullable=True)
     backdrop: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    profile_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     username_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
