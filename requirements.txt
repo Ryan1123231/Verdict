@@ -9,3 +9,5 @@ itsdangerous
 python-multipart
 httpx
 slowapi
+pillow
+pillow

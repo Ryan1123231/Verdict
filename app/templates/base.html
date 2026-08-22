@@ -6,140 +6,172 @@
   <title>{% block title %}VERDICT{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a0a0c;
-      --panel: #131318;
-      --panel-hi: #1c1c23;
-      --line: #2a2a34;
-      --text: #e8e6e3;
-      --muted: #8b8794;
-      --blood: #8b1a1a;
-      --blood-hi: #b52424;
-      --gold: #c9a227;
+      --bg: #0a0c0a;
+      --panel: #12160f;
+      --panel-2: #0e1210;
+      --panel-hi: #1a1f17;
+      --line: #29312a;
+      --line-hi: #3d4a3c;
+      --text: #c8cec0;
+      --muted: #767f72;
+      --moss: #4a5c39;
+      --moss-hi: #61784b;
+      --verd: #5c8074;
+      --brass: #9a8f6b;
+      --bone: #b9bfae;
     }
     * { box-sizing: border-box; }
     body {
       background: var(--bg);
       background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,26,26,.18), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(40,20,60,.15), transparent);
+        radial-gradient(ellipse 90% 55% at 50% -15%, rgba(92,128,116,.07), transparent),
+        radial-gradient(ellipse 70% 50% at 10% 100%, rgba(74,92,57,.08), transparent),
+        radial-gradient(ellipse 100% 100% at 50% 50%, transparent 45%, rgba(0,0,0,.55) 100%);
       background-attachment: fixed;
       color: var(--text);
-      font-family: Inter, system-ui, sans-serif;
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.05rem;
       margin: 0;
       padding: 0 1rem 4rem;
-      line-height: 1.6;
+      line-height: 1.65;
       -webkit-font-smoothing: antialiased;
     }
-    .wrap { max-width: 680px; margin: 0 auto; }
+    .wrap { max-width: 720px; margin: 0 auto; }
     nav {
       display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
-      padding: 1.25rem 0; margin-bottom: 2rem;
+      padding: 1.5rem 0 1rem; margin-bottom: 2rem;
       border-bottom: 1px solid var(--line);
     }
     .brand {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.75rem; letter-spacing: .12em;
-      color: var(--text); text-decoration: none; margin-right: auto;
+      font-family: Cinzel, serif; font-weight: 600;
+      font-size: 1.45rem; letter-spacing: .22em;
+      color: var(--bone); text-decoration: none; margin-right: auto;
     }
-    .brand span { color: var(--blood-hi); }
-    nav a { color: var(--muted); text-decoration: none; font-size: .9rem; font-weight: 500; }
-    nav a:hover { color: var(--text); }
-    .who { color: var(--muted); font-size: .85rem; }
+    .brand span { color: var(--verd); }
+    nav a {
+      color: var(--muted); text-decoration: none;
+      font-family: Cinzel, serif; font-size: .75rem;
+      letter-spacing: .14em; text-transform: uppercase;
+    }
+    nav a:hover { color: var(--bone); }
+    .who {
+      color: #5f685c; font-size: .78rem;
+      font-family: Cinzel, serif; letter-spacing: .08em;
+    }
     h1 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 2.75rem; letter-spacing: .06em; font-weight: 400;
-      margin: 0 0 1.5rem;
+      font-family: Cinzel, serif; font-weight: 400;
+      font-size: 2rem; letter-spacing: .14em; text-transform: uppercase;
+      margin: 0 0 1.75rem; color: var(--bone);
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--line);
     }
+    h2 { font-family: Cinzel, serif; font-weight: 400; color: var(--muted); }
     .card {
-      background: var(--panel);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 2px;
       padding: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: .9rem;
       display: flex; gap: 1rem;
-      transition: border-color .15s, transform .15s;
+      box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 3px 14px rgba(0,0,0,.55);
+      transition: border-color .2s;
     }
-    .card:hover { border-color: #3a3a46; transform: translateY(-1px); }
-    .card img { width: 72px; border-radius: 6px; flex-shrink: 0; align-self: flex-start; }
+    .card:hover { border-color: var(--line-hi); }
+    .card img {
+      width: 74px; border-radius: 1px; flex-shrink: 0; align-self: flex-start;
+      border: 1px solid #222a22;
+      filter: saturate(.55) contrast(.95) brightness(.88);
+    }
+    .card:hover img { filter: saturate(.75) contrast(1) brightness(.95); }
     .card-body { flex: 1; min-width: 0; }
-    .title { font-weight: 700; font-size: 1.05rem; }
-    .year { color: var(--muted); font-weight: 400; }
-    .meta { color: var(--muted); font-size: .85rem; margin-top: .15rem; }
+    .title { font-weight: 500; font-size: 1.15rem; color: var(--bone); }
+    .year { color: #656e61; font-weight: 400; }
+    .meta { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
     .review {
-      margin-top: .6rem; padding-left: .75rem;
-      border-left: 2px solid var(--blood);
-      color: #c9c5c0; font-size: .92rem;
+      margin-top: .65rem; padding-left: .9rem;
+      border-left: 2px solid var(--moss);
+      color: #9aa392; font-style: italic;
     }
     .score {
-      display: inline-block; font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.4rem; letter-spacing: .04em; color: var(--gold);
+      display: inline-block; font-family: Cinzel, serif; font-weight: 600;
+      font-size: 1.1rem; color: var(--brass);
     }
     input, select, textarea {
       background: var(--panel-hi); color: var(--text);
-      border: 1px solid var(--line); border-radius: 7px;
-      padding: .6rem .75rem; font-family: inherit; font-size: .95rem;
+      border: 1px solid var(--line); border-radius: 1px;
+      padding: .6rem .75rem; font-family: 'EB Garamond', serif; font-size: 1rem;
       width: 100%; max-width: 100%;
     }
-    input:focus, select:focus { outline: none; border-color: var(--blood-hi); }
-    input::placeholder { color: #5c5866; }
+    input:focus, select:focus { outline: none; border-color: var(--verd); }
+    input::placeholder { color: #555d52; font-style: italic; }
     button {
-      background: var(--blood); color: #fff; border: none; border-radius: 7px;
-      padding: .6rem 1.1rem; font-family: inherit; font-size: .9rem; font-weight: 600;
-      cursor: pointer; transition: background .15s;
+      background: linear-gradient(180deg, var(--moss-hi), var(--moss));
+      color: #dfe4d5; border: 1px solid #35422a; border-radius: 1px;
+      padding: .55rem 1.15rem;
+      font-family: Cinzel, serif; font-size: .75rem; font-weight: 600;
+      letter-spacing: .12em; text-transform: uppercase;
+      cursor: pointer; transition: filter .15s;
     }
-    button:hover { background: var(--blood-hi); }
+    button:hover { filter: brightness(1.18); }
     button.ghost {
-      background: transparent; border: 1px solid var(--line); color: var(--muted);
-      padding: .35rem .7rem; font-size: .8rem;
+      background: transparent; border: 1px solid var(--line); color: #6a7366;
+      padding: .3rem .7rem; font-size: .68rem;
     }
-    button.ghost:hover { border-color: var(--blood); color: var(--text); }
+    button.ghost:hover { border-color: var(--verd); color: var(--bone); filter: none; }
     .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
     .row input { flex: 1; min-width: 140px; width: auto; }
     .row button { flex-shrink: 0; }
     .stack > * { margin-bottom: .75rem; }
     .err {
-      background: rgba(139,26,26,.15); border: 1px solid var(--blood);
-      color: #ff9b9b; padding: .7rem 1rem; border-radius: 7px; margin-bottom: 1.25rem;
-      font-size: .9rem;
+      background: rgba(90,40,30,.2); border: 1px solid #6a4034;
+      color: #c39a8a; padding: .7rem 1rem; border-radius: 1px; margin-bottom: 1.25rem;
+      font-style: italic;
     }
     .empty {
-      color: var(--muted); text-align: center; padding: 3rem 1rem;
-      border: 1px dashed var(--line); border-radius: 10px;
+      color: #6a7366; text-align: center; padding: 3rem 1rem;
+      border: 1px solid var(--line); border-radius: 1px; font-style: italic;
+      background: rgba(14,18,16,.5);
     }
-    .following { color: var(--muted); font-size: .85rem; margin: 1rem 0 2rem; }
-    .following b { color: var(--text); font-weight: 500; }
+    .following { color: var(--muted); font-size: .92rem; margin: 1rem 0 2rem; }
+    .following b { color: var(--bone); font-weight: 500; }
     form.inline { display: inline; }
-    .auth { max-width: 360px; margin: 3rem auto; }
+    .auth { max-width: 380px; margin: 3rem auto; }
     .tag {
-      font-size: .7rem; text-transform: uppercase; letter-spacing: .08em;
-      color: var(--muted); border: 1px solid var(--line);
-      padding: .1rem .4rem; border-radius: 4px;
+      font-family: Cinzel, serif; font-size: .62rem;
+      text-transform: uppercase; letter-spacing: .12em;
+      color: #6a7366; border: 1px solid var(--line);
+      padding: .15rem .45rem; border-radius: 1px;
     }
     .tabs { display: flex; gap: .4rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
     .tab {
       display: inline-flex; align-items: center; gap: .4rem;
-      padding: .45rem .85rem; border-radius: 999px;
+      padding: .4rem .9rem; border-radius: 1px;
       border: 1px solid var(--line); background: var(--panel);
       color: var(--muted); text-decoration: none;
-      font-size: .85rem; font-weight: 500;
-      transition: all .15s;
+      font-family: Cinzel, serif; font-size: .7rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      transition: all .15s; cursor: pointer;
     }
-    .tab:hover { border-color: #3a3a46; color: var(--text); }
-    .tab.on { background: var(--blood); border-color: var(--blood); color: #fff; }
-    .tab span { font-size: .75rem; opacity: .7; }
+    .tab:hover { border-color: var(--line-hi); color: var(--bone); }
+    .tab.on {
+      background: linear-gradient(180deg, var(--moss-hi), var(--moss));
+      border-color: #35422a; color: #dfe4d5;
+    }
+    .tab span { font-size: .68rem; opacity: .7; }
     .sortbar { margin: -.75rem 0 1.5rem; }
     .sortbar select {
-      width: auto; padding: .4rem .7rem; font-size: .82rem;
-      color: var(--muted); border-radius: 7px; cursor: pointer;
+      width: auto; padding: .35rem .7rem; font-size: .9rem;
+      color: var(--muted); border-radius: 1px; cursor: pointer;
     }
     .sortbar select:hover { color: var(--text); }
     @media (max-width: 480px) {
-      h1 { font-size: 2.1rem; }
-      .card img { width: 56px; }
-      nav { gap: .9rem; }
+      h1 { font-size: 1.55rem; }
+      .card img { width: 58px; }
+      nav { gap: .85rem; }
+      body { font-size: 1rem; }
     }
   </style>
 </head>
@@ -152,8 +184,8 @@
     <a href="/feed">Feed</a>
     <a href="/search">Search</a>
     <a href="/friends">Friends</a>
-    <a href="/me">Mine</a>
-    <span class="who">{{ user.username }}</span>
+    <a href="/u/{{ user.username }}">Mine</a>
+    <a href="/settings" class="who" style="text-decoration:none">{{ user.username }}</a>
     <form class="inline" method="post" action="/ui/logout">
       <button class="ghost" type="submit">Log out</button>
     </form>

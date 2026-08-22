@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+import re
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import discover, igdb, tmdb
+from app import discover, igdb, media, tmdb
 from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
 from app.friends import friend_ids
@@ -176,11 +179,11 @@ def friends_page(
 
 @router.post("/ui/friends/request")
 def ui_friend_request(
-    username: str = Form(...),
+    friend_handle: str = Form(...),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    target = db.scalar(select(User).where(User.username == username.strip()))
+    target = db.scalar(select(User).where(User.username == friend_handle.strip()))
     if target is None or target.id == user.id:
         return RedirectResponse(url="/friends", status_code=303)
 
@@ -529,3 +532,139 @@ def discover_page(
         request, "discover.html",
         {"user": user, "data": data, "ratings": ratings_by_key},
     )
+
+
+BROWSE_LABELS = {"movie": "Films", "tv": "Shows", "game": "Games"}
+
+
+@router.get("/browse/{kind}", response_class=HTMLResponse)
+def browse_page(
+    request: Request,
+    kind: str,
+    page: int = 1,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if kind not in BROWSE_LABELS:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    page = max(1, min(page, 100))
+
+    rows = []
+    try:
+        if kind == "game":
+            rows = igdb.browse(page)
+        else:
+            rows = tmdb.browse(kind, page)
+    except Exception:
+        pass
+
+    ids = friend_ids(db, user.id) + [user.id]
+    ratings_by_key = {}
+    if ids and rows:
+        seen = db.execute(
+            select(Item.source, Item.source_id, Rating.score, User.username)
+            .join(Rating, Rating.item_id == Item.id)
+            .join(User, User.id == Rating.user_id)
+            .where(Rating.user_id.in_(ids))
+        ).all()
+        for r in seen:
+            ratings_by_key.setdefault((r.source, r.source_id), []).append(
+                {"username": r.username, "score": r.score}
+            )
+
+    return templates.TemplateResponse(
+        request, "browse.html",
+        {
+            "user": user, "kind": kind, "label": BROWSE_LABELS[kind],
+            "rows": rows, "page": page, "ratings": ratings_by_key,
+        },
+    )
+
+
+RENAME_DAYS = 90
+
+
+def _can_rename(u: User) -> tuple[bool, int]:
+    if u.username_changed_at is None:
+        return True, 0
+    elapsed = datetime.now(timezone.utc) - u.username_changed_at
+    left = RENAME_DAYS - elapsed.days
+    return (left <= 0), max(0, left)
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    ok, left = _can_rename(user)
+    return templates.TemplateResponse(
+        request, "settings.html",
+        {"user": user, "can_rename": ok, "days_left": left},
+    )
+
+
+@router.post("/ui/settings/profile")
+async def ui_settings_profile(
+    bio: str = Form(""),
+    avatar: UploadFile | None = File(None),
+    backdrop: UploadFile | None = File(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    user.bio = bio.strip()[:280] or None
+
+    for field, upload in (("avatar", avatar), ("backdrop", backdrop)):
+        if upload is None or not upload.filename:
+            continue
+        raw = await upload.read(media.MAX_BYTES + 1)
+        name = media.save_image(raw, field)
+        if name:
+            media.delete_image(getattr(user, field))
+            setattr(user, field, name)
+
+    db.commit()
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@router.post("/ui/settings/username")
+def ui_settings_username(
+    request: Request,
+    new_handle: str = Form(...),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    ok, left = _can_rename(user)
+    new = new_handle.strip()
+
+    if not ok or not new or new == user.username:
+        return RedirectResponse(url="/settings", status_code=303)
+
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", new):
+        return templates.TemplateResponse(
+            request, "settings.html",
+            {"user": user, "can_rename": ok, "days_left": left,
+             "error": "Use 3-32 letters, numbers, dots, dashes or underscores."},
+            status_code=400,
+        )
+
+    user.username = new
+    user.username_changed_at = datetime.now(timezone.utc)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return templates.TemplateResponse(
+            request, "settings.html",
+            {"user": user, "can_rename": ok, "days_left": left,
+             "error": "That name is taken."},
+            status_code=400,
+        )
+
+    return RedirectResponse(url="/settings", status_code=303)

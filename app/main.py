@@ -2,6 +2,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 from slowapi.errors import RateLimitExceeded
 
+from fastapi.staticfiles import StaticFiles
+
+from fastapi.staticfiles import StaticFiles
+
 from app.limiter import limiter
 
 from app import auth, friends, items, ratings, views
@@ -19,6 +23,14 @@ app.include_router(items.router, prefix="/api")
 app.include_router(ratings.router)
 app.include_router(friends.router)
 app.include_router(views.router)
+
+import os
+os.makedirs("/media", exist_ok=True)
+app.mount("/media", StaticFiles(directory="/media"), name="media")
+
+import os
+os.makedirs("/media", exist_ok=True)
+app.mount("/media", StaticFiles(directory="/media"), name="media")
 
 
 @app.get("/healthz")

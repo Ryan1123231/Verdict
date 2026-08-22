@@ -143,3 +143,26 @@ def popular(limit: int = 6) -> list[dict]:
         if item is not None:
             out.append(item)
     return out
+
+
+def browse(page: int = 1) -> list[dict]:
+    page = max(1, min(page, 100))
+    offset = (page - 1) * 20
+    body = (
+        "fields name,first_release_date,cover.url,total_rating_count; "
+        "where total_rating_count > 30 & version_parent = null & cover != null; "
+        "sort total_rating_count desc; "
+        f"limit 20; offset {offset};"
+    )
+
+    with httpx.Client(timeout=8.0) as client:
+        resp = client.post(f"{BASE_URL}/games", headers=_headers(), content=body)
+        resp.raise_for_status()
+        rows = resp.json()
+
+    out = []
+    for row in rows:
+        item = _normalize(row)
+        if item is not None:
+            out.append(item)
+    return out
