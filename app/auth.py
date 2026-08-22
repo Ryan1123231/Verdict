@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.limiter import limiter
 from app.models import User
 from app.security import (
     SESSION_COOKIE,
@@ -39,13 +40,15 @@ def _set_session(response: RedirectResponse, user_id: int) -> None:
         sign_session(user_id),
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=60 * 60 * 24 * 14,
     )
 
 
 @router.post("/register")
+@limiter.limit("4/hour")
 def register(
+    request: Request,
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
@@ -72,7 +75,9 @@ def register(
 
 
 @router.post("/login")
+@limiter.limit("8/minute")
 def login(
+    request: Request,
     email: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db),

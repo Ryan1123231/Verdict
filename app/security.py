@@ -5,7 +5,7 @@ from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHas
 from itsdangerous import BadSignature, URLSafeSerializer
 
 SECRET_KEY = os.environ["SECRET_KEY"]
-SESSION_COOKIE = "session"
+SESSION_COOKIE = "__Host-session"
 
 _hasher = PasswordHasher()
 _serializer = URLSafeSerializer(SECRET_KEY, salt="session")

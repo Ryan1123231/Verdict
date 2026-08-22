@@ -8,3 +8,4 @@ argon2-cffi
 itsdangerous
 python-multipart
 httpx
+slowapi

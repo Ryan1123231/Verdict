@@ -9,6 +9,7 @@ from app import igdb, tmdb
 from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
 from app.friends import friend_ids
+from app.limiter import limiter
 from app.models import Friendship, Item, Rating, User
 from app.security import SESSION_COOKIE, hash_password, verify_password
 
@@ -46,6 +47,7 @@ def register_page(request: Request, user: User | None = Depends(get_current_user
 
 
 @router.post("/ui/register")
+@limiter.limit("4/hour")
 def ui_register(
     request: Request,
     username: str = Form(...),
@@ -82,6 +84,7 @@ def ui_register(
 
 
 @router.post("/ui/login")
+@limiter.limit("8/minute")
 def ui_login(
     request: Request,
     email: str = Form(...),
