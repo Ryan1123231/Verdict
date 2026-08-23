@@ -2,8 +2,8 @@
 
 A social rating app for films, shows, and games, built primarily as an exercise in designing and testing an authorization layer.
 
-**Live:** [verdictapp.app](https://verdictapp.app)
-**Stack:** FastAPI · PostgreSQL · SQLAlchemy · Alembic · Jinja2 · Docker Compose
+**Live:** [verdictapp.app](https://verdictapp.app)  
+**Stack:** FastAPI · PostgreSQL · SQLAlchemy · Alembic · Jinja2 · Docker Compose  
 **Author:** Ryan Dempsey, Integrated Information Technology with a Cybersecurity Operations minor, University of South Carolina
 
 ---
