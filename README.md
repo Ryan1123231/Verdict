@@ -283,7 +283,7 @@ Verdict lets a small group of friends rate films, shows, and games in one place,
 ## Running it
 
 ```bash
-git clone https://github.com/Ryan1123231/Verdict.git
+git clone https://github.com/RyanDempsey05/Verdict.git
 cd Verdict
 ```
 
@@ -318,4 +318,4 @@ In order of what I think matters most:
 
 ---
 
-Built by [Ryan Dempsey](https://github.com/Ryan1123231).
+Built by [Ryan Dempsey](https://github.com/RyanDempsey05).
