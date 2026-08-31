@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,7 @@ from app.auth import _set_session, get_current_user, require_user
 from app.db import get_db
 from app.friends import friend_ids
 from app.limiter import limiter
-from app.models import Friendship, Item, Rating, User
+from app.models import Friendship, Item, ListEntry, Rating, User
 from app.limiter import limiter
 from app.security import SESSION_COOKIE, hash_password, verify_password
 
@@ -276,6 +276,7 @@ def search_page(
     request: Request,
     q: str = "",
     user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
@@ -291,13 +292,31 @@ def search_page(
             results.extend(igdb.search(term))
         except Exception:
             pass
+
+    rows = db.execute(
+        select(Item.source, Item.source_id, Rating.score)
+        .join(Rating, Rating.item_id == Item.id)
+        .where(Rating.user_id == user.id)
+    ).all()
+    mine = {(r.source, r.source_id): r.score for r in rows}
+
     return templates.TemplateResponse(
-        request, "search.html", {"user": user, "q": q, "results": results}
+        request, "search.html",
+        {"user": user, "q": q, "results": results, "mine": mine},
     )
+
+
+def _safe_next(raw: str | None) -> str:
+    if not raw:
+        return "/me"
+    if not raw.startswith("/") or raw.startswith("//"):
+        return "/me"
+    return raw[:200]
 
 
 @router.post("/rate")
 def ui_rate(
+    request: Request,
     media_type: str = Form(...),
     source_id: str = Form(...),
     score: int = Form(...),
@@ -305,8 +324,14 @@ def ui_rate(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
+    dest = _safe_next(request.headers.get("referer", "").split("verdictapp.app", 1)[-1] or None)
+    dest = dest.split("#", 1)[0]
+    anchor = re.sub(r"[^A-Za-z0-9_-]", "", f"{media_type}-{source_id}")
+    if anchor:
+        dest = f"{dest}#i-{anchor}"
+
     if score < 1 or score > 10:
-        return RedirectResponse(url="/search", status_code=303)
+        return RedirectResponse(url=dest, status_code=303)
 
     review = (review or "").strip()[:2000] or None
 
@@ -321,7 +346,7 @@ def ui_rate(
         else:
             data = tmdb.fetch_one(media_type, source_id)
         if data is None:
-            return RedirectResponse(url="/search", status_code=303)
+            return RedirectResponse(url=dest, status_code=303)
         item = Item(**data)
         db.add(item)
         try:
@@ -342,7 +367,7 @@ def ui_rate(
         db.add(Rating(user_id=user.id, item_id=item.id, score=score, review=review))
     db.commit()
 
-    return RedirectResponse(url="/me", status_code=303)
+    return RedirectResponse(url=dest, status_code=303)
 
 
 @router.get("/me", response_class=HTMLResponse)
@@ -479,6 +504,7 @@ def profile_page(
             "is_friend": True, "is_self": is_self,
             "ratings": rows, "active": type, "counts": counts,
             "sort": sort, "sorts": SORTS,
+            "lists": _lists_for(db, profile.id), "list_types": LIST_TYPES,
         },
     )
 
@@ -738,3 +764,107 @@ def ui_delete_account(
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
+
+
+LIST_TYPES = {"movie": "Films", "tv": "Shows", "game": "Games"}
+
+
+def _lists_for(db: Session, user_id: int) -> dict:
+    rows = db.execute(
+        select(
+            ListEntry.type, ListEntry.position,
+            Item.title, Item.year, Item.image_url,
+        )
+        .join(Item, Item.id == ListEntry.item_id)
+        .where(ListEntry.user_id == user_id)
+        .order_by(ListEntry.type, ListEntry.position)
+    ).all()
+    out = {k: [] for k in LIST_TYPES}
+    for r in rows:
+        if r.type in out:
+            out[r.type].append(r)
+    return out
+
+
+@router.get("/lists", response_class=HTMLResponse)
+def lists_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    rated = db.execute(
+        select(Item.id, Item.title, Item.year, Item.type, Item.image_url)
+        .join(Rating, Rating.item_id == Item.id)
+        .where(Rating.user_id == user.id)
+        .order_by(Item.title)
+    ).all()
+
+    options = {k: [] for k in LIST_TYPES}
+    for r in rated:
+        if r.type in options:
+            options[r.type].append(r)
+
+    current = {}
+    rows = db.scalars(
+        select(ListEntry).where(ListEntry.user_id == user.id)
+    ).all()
+    for e in rows:
+        current[(e.type, e.position)] = e.item_id
+
+    return templates.TemplateResponse(
+        request, "lists.html",
+        {"user": user, "options": options, "current": current,
+         "types": LIST_TYPES, "slots": range(1, 6)},
+    )
+
+
+@router.post("/ui/lists/{kind}")
+async def ui_save_list(
+    kind: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    if kind not in LIST_TYPES:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    form = await request.form()
+
+    owned = set(
+        db.scalars(
+            select(Item.id)
+            .join(Rating, Rating.item_id == Item.id)
+            .where(Rating.user_id == user.id, Item.type == kind)
+        ).all()
+    )
+
+    picks = {}
+    for pos in range(1, 6):
+        raw = form.get(f"slot{pos}", "")
+        if not raw:
+            continue
+        try:
+            item_id = int(raw)
+        except ValueError:
+            continue
+        if item_id not in owned:
+            continue
+        if item_id in picks.values():
+            continue
+        picks[pos] = item_id
+
+    db.execute(
+        delete(ListEntry).where(
+            ListEntry.user_id == user.id, ListEntry.type == kind
+        )
+    )
+    for pos, item_id in picks.items():
+        db.add(
+            ListEntry(user_id=user.id, item_id=item_id, type=kind, position=pos)
+        )
+    db.commit()
+
+    return RedirectResponse(url="/lists", status_code=303)

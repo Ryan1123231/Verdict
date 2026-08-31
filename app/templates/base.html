@@ -69,7 +69,8 @@
       border-bottom: 1px solid var(--line);
     }
     h2 { font-family: Cinzel, serif; font-weight: 400; color: var(--muted); }
-    .card {
+    html { scroll-behavior: smooth; }
+    .card { scroll-margin-top: 2rem;
       background: linear-gradient(180deg, var(--panel), var(--panel-2));
       border: 1px solid var(--line);
       border-radius: 2px;
@@ -167,6 +168,40 @@
       color: var(--muted); border-radius: 1px; cursor: pointer;
     }
     .sortbar select:hover { color: var(--text); }
+    .pickgrid {
+      display: grid; gap: .8rem;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
+    .pick {
+      border: 1px solid var(--line); border-radius: 2px;
+      padding: .4rem; background: var(--panel);
+      transition: border-color .15s;
+    }
+    .pick.picked { border-color: var(--moss-hi); background: rgba(74,92,57,.12); }
+    .pick img {
+      width: 100%; display: block; border-radius: 1px;
+      filter: saturate(.5) brightness(.8);
+    }
+    .pick.picked img { filter: saturate(.9) brightness(1); }
+    .pick-noimg {
+      height: 150px; display: flex; align-items: center; justify-content: center;
+      text-align: center; font-size: .75rem; color: var(--muted);
+      background: var(--panel-hi); padding: .4rem;
+    }
+    .pick-title {
+      font-size: .72rem; color: var(--muted); margin: .35rem 0 .3rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pick-ranks { display: flex; gap: .18rem; }
+    .rankbtn {
+      flex: 1; padding: .18rem 0; font-size: .65rem; letter-spacing: 0;
+      background: transparent; border: 1px solid var(--line); color: #6a7366;
+    }
+    .rankbtn:hover { border-color: var(--verd); color: var(--bone); filter: none; }
+    .rankbtn.on {
+      background: linear-gradient(180deg, var(--moss-hi), var(--moss));
+      border-color: #35422a; color: #dfe4d5;
+    }
     @media (max-width: 480px) {
       h1 { font-size: 1.55rem; }
       .card img { width: 58px; }

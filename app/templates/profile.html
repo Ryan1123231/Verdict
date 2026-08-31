@@ -23,6 +23,26 @@
   </div>
 {% else %}
 
+{% if is_self or (lists and (lists.movie or lists.tv or lists.game)) %}
+<div class="row" style="margin:2rem 0 1rem;align-items:baseline;gap:.8rem">
+  <h2 style="font-size:1.3rem;margin:0">Top Five</h2>
+  {% if is_self %}<a href="/lists" class="tab" style="padding:.2rem .6rem">Edit</a>{% endif %}
+</div>
+{% for kind, label in list_types.items() %}
+  {% if lists[kind] %}
+  <div class="meta" style="margin-top:1rem">{{ label }}</div>
+  <div class="row" style="gap:.6rem;align-items:flex-start;margin-top:.5rem">
+    {% for e in lists[kind] %}
+      <div style="width:76px;text-align:center">
+        {% if e.image_url %}<img src="{{ e.image_url }}" alt="" style="width:76px;border:1px solid var(--line);border-radius:2px;filter:saturate(.7)">{% endif %}
+        <div class="year" style="font-size:.75rem;margin-top:.2rem">{{ e.position }}. {{ e.title[:18] }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+{% endif %}
+
 <div class="tabs">
   <a href="/u/{{ profile.username }}" class="tab {% if active == 'all' %}on{% endif %}">All <span>{{ counts.get('all', 0) }}</span></a>
   <a href="/u/{{ profile.username }}?type=movie" class="tab {% if active == 'movie' %}on{% endif %}">Movies <span>{{ counts.get('movie', 0) }}</span></a>

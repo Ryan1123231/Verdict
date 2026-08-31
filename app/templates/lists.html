@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Edit Lists</h1>
+<div class="meta" style="margin-bottom:.5rem">Click a number to rank it. Click the same number again to clear that slot.</div>
+<div class="meta" style="margin-bottom:2rem"><a href="/u/{{ user.username }}" style="color:var(--verd)">&larr; Back to profile</a></div>
+
+{% for kind, label in types.items() %}
+<h2 style="font-size:1.3rem;margin-top:2.5rem">{{ label }}</h2>
+{% if not options[kind] %}
+  <div class="empty">Rate some {{ label|lower }} first.</div>
+{% else %}
+<form method="post" action="/ui/lists/{{ kind }}" data-kind="{{ kind }}">
+  {% for pos in slots %}
+    <input type="hidden" name="slot{{ pos }}" id="{{ kind }}-slot{{ pos }}" value="{{ current.get((kind, pos), '') }}">
+  {% endfor %}
+
+  <div class="pickgrid">
+    {% for o in options[kind] %}
+      <div class="pick" data-item="{{ o.id }}">
+        {% if o.image_url %}
+          <img src="{{ o.image_url }}" alt="">
+        {% else %}
+          <div class="pick-noimg">{{ o.title[:22] }}</div>
+        {% endif %}
+        <div class="pick-title">{{ o.title }}</div>
+        <div class="pick-ranks">
+          {% for pos in slots %}
+            <button type="button" class="rankbtn" data-pos="{{ pos }}">{{ pos }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <button type="submit" style="margin-top:1rem">Save {{ label }}</button>
+</form>
+{% endif %}
+{% endfor %}
+
+<script>
+document.querySelectorAll('form[data-kind]').forEach(function (form) {
+  var kind = form.getAttribute('data-kind');
+
+  function slotInput(pos) {
+    return document.getElementById(kind + '-slot' + pos);
+  }
+
+  function paint() {
+    var byItem = {};
+    for (var p = 1; p <= 5; p++) {
+      var v = slotInput(p).value;
+      if (v) byItem[v] = p;
+    }
+    form.querySelectorAll('.pick').forEach(function (card) {
+      var id = card.getAttribute('data-item');
+      var rank = byItem[id];
+      card.classList.toggle('picked', !!rank);
+      card.querySelectorAll('.rankbtn').forEach(function (b) {
+        b.classList.toggle('on', String(b.getAttribute('data-pos')) === String(rank));
+      });
+    });
+  }
+
+  form.querySelectorAll('.rankbtn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pos = btn.getAttribute('data-pos');
+      var id = btn.closest('.pick').getAttribute('data-item');
+      var input = slotInput(pos);
+
+      if (input.value === id) {
+        input.value = '';
+      } else {
+        for (var p = 1; p <= 5; p++) {
+          if (slotInput(p).value === id) slotInput(p).value = '';
+        }
+        input.value = id;
+      }
+      paint();
+    });
+  });
+
+  paint();
+});
+</script>
+{% endblock %}

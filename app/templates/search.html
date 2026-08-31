@@ -8,6 +8,7 @@
 </div>
 
 <div id="results" style="margin-top:1.5rem"></div>
+<script id="mine-data" type="application/json">{{ mine.items() | list | tojson }}</script>
 
 <script>
 (function () {
@@ -17,6 +18,13 @@
   var timer = null;
   var seq = 0;
 
+  var mine = {};
+  try {
+    JSON.parse(document.getElementById('mine-data').textContent).forEach(function (e) {
+      mine[e[0][0] + '|' + e[0][1]] = e[1];
+    });
+  } catch (err) {}
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -24,8 +32,11 @@
   }
 
   function card(row) {
+    var yours = mine[row.source + '|' + row.source_id];
     var opts = '';
-    for (var n = 10; n >= 1; n--) opts += '<option value="' + n + '">' + n + '</option>';
+    for (var n = 10; n >= 1; n--) {
+      opts += '<option value="' + n + '"' + (yours === n ? ' selected' : '') + '>' + n + '</option>';
+    }
     return '' +
       '<div class="card">' +
         (row.image_url ? '<img src="' + esc(row.image_url) + '" alt="">' : '') +
@@ -33,12 +44,13 @@
           '<div class="title">' + esc(row.title) +
             ' <span class="year">' + (row.year ? esc(row.year) : '') + '</span></div>' +
           '<div class="meta"><span class="tag">' + esc(row.type) + '</span></div>' +
+          (yours ? '<div class="meta"><span class="score">' + yours + '</span><span class="year">/10 &mdash; your verdict</span></div>' : '') +
           '<form method="post" action="/rate" class="row" style="margin-top:.7rem">' +
             '<input type="hidden" name="media_type" value="' + esc(row.type) + '">' +
             '<input type="hidden" name="source_id" value="' + esc(row.source_id) + '">' +
             '<select name="score" style="width:auto;flex:0 0 auto">' + opts + '</select>' +
             '<input name="review" placeholder="say something (optional)" maxlength="2000">' +
-            '<button type="submit">Rate</button>' +
+            '<button type="submit">' + (yours ? 'Update' : 'Rate') + '</button>' +
           '</form>' +
         '</div>' +
       '</div>';

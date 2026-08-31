@@ -13,24 +13,28 @@
 {% endif %}
 
 {% for row in rows %}
-  <div class="card">
+  <div class="card" id="i-{{ row.type }}-{{ row.source_id }}">
     {% if row.image_url %}<img src="{{ row.image_url }}" alt="">{% endif %}
     <div class="card-body">
       <div class="title">{{ row.title }} <span class="year">{% if row.year %}{{ row.year }}{% endif %}</span></div>
       {% set seen = ratings.get((row.source, row.source_id)) %}
+      {% set mine = (seen or []) | selectattr("username", "equalto", user.username) | first %}
+      {% if mine %}
+        <div class="meta"><span class="score">{{ mine.score }}</span><span class="year">/10 &mdash; your verdict</span></div>
+      {% endif %}
       {% if seen %}
         <div class="meta">
-          {% for s in seen %}<span class="tag" style="margin-right:.3rem">{{ s.username }} {{ s.score }}/10</span>{% endfor %}
+          {% for s in seen %}{% if s.username != user.username %}<span class="tag" style="margin-right:.3rem">{{ s.username }} {{ s.score }}/10</span>{% endif %}{% endfor %}
         </div>
       {% endif %}
       <form method="post" action="/rate" class="row" style="margin-top:.7rem">
         <input type="hidden" name="media_type" value="{{ row.type }}">
         <input type="hidden" name="source_id" value="{{ row.source_id }}">
         <select name="score" style="width:auto;flex:0 0 auto">
-          {% for n in range(10, 0, -1) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+          {% for n in range(10, 0, -1) %}<option value="{{ n }}" {% if mine and mine.score == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
         </select>
         <input name="review" placeholder="say something (optional)" maxlength="2000">
-        <button type="submit">Rate</button>
+        <button type="submit">{% if mine %}Update{% else %}Rate{% endif %}</button>
       </form>
     </div>
   </div>

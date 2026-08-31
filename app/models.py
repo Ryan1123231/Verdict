@@ -26,7 +26,7 @@ class User(Base):
     bio: Mapped[str | None] = mapped_column(String(280), nullable=True)
     avatar: Mapped[str | None] = mapped_column(String(64), nullable=True)
     backdrop: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    profile_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    profile_public: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     username_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -99,4 +99,24 @@ class Friendship(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ListEntry(Base):
+    __tablename__ = "list_entries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "type", "position"),
+        UniqueConstraint("user_id", "type", "item_id"),
+        CheckConstraint("position >= 1 AND position <= 5", name="position_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(16), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
